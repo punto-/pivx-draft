@@ -1,4 +1,5 @@
 import os
+import sys
 
 lib_sources = [
 	'libbtc/src/utils.c',
@@ -55,7 +56,11 @@ lib_sources = [
 	'libbtc/src/ecc_libsecp256k1.c'
 ]
 
-env = Environment()
+if sys.platform == "win32":
+	env = Environment(tools = ['mingw'])
+	env['ENV']['PATH'] = os.environ['PATH']
+else:
+	env = Environment()
 
 env.Append(CPPFLAGS=["-D__LIBBTC_NET_H__", "-DHAVE_CONFIG_H", "-DWIN32"]) #, "-DUSE_NUM_NONE", "-DUSE_FIELD_10X26", "-DUSE_FIELD_INV_BUILTIN", "-DUSE_SCALAR_8X32", "-DUSE_SCALAR_INV_BUILTIN"])
 
