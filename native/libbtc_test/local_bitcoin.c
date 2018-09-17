@@ -20,9 +20,12 @@ typedef SSIZE_T ssize_t;
 #include <btc/protocol.h>
 #include <btc/tool.h>
 #include <btc/bip32.h>
+//#include <btc/script.h>
 
 //Crear direccion de testnet
 //Mandar bitcoin a direccion de testnet desde un faucet
+
+void get_pubkey_hex_from_wif_priv(const char* priv_key, char* out);
 
 extern void btc_ecc_start();
 extern void btc_ecc_stop();
@@ -107,6 +110,78 @@ void local_btc(){
 	
 }
 
+void create_multisig_script() {
+	const char* priv_key_1 = "L3ghwj2zgQnHkfkb5A5m6JTRni3hSZqACjqbuatE2YX99RCwFoky";
+	const char* priv_key_2 = "L1cm7DGCsU4XjtQ75oQVTQxk9S274ff6ADnrky7TK9cDTgFFgEd4";
+	const char* priv_key_3 = "KwnMaB7b8NMYbBDpoz4B5S3kis2FN5z8pWBHKqTf5vXFrX3wSRaB";
+
+	const char* pkey1 = "03577f6a95a6bfcf4bfa5900be2bce714421a3d025ca47c68e188e5b1e6951eca2";
+	const char* pkey2 = "0292e5b1d8471993ceb355a58162d8104312f66d18f236d8ec5bc2bcd1b4b3ad45";
+	const char* pkey3 = "0206ad27254ca2858cc53b9de0ab320f4bedfcfb3f08ecf34d16cbf2fb0185d6b5";
+
+	int outlen = 0;
+	char pkey1_bin[strlen(pkey1) / 2];
+	utils_hex_to_bin(pkey1, pkey1_bin, strlen(pkey1), &outlen);
+
+	outlen = 0;
+	char pkey2_bin[strlen(pkey2) / 2];
+	utils_hex_to_bin(pkey2, pkey2_bin, strlen(pkey2), &outlen);
+
+	outlen = 0;
+	char pkey3_bin[strlen(pkey3) / 2];
+	utils_hex_to_bin(pkey3, pkey3_bin, strlen(pkey3), &outlen);
+
+	size_t len = sizeof(pkey3_bin);
+	char* redeemScript = malloc(len * 3 + 6);
+	redeemScript[0] = OP_2;
+	redeemScript[1] = 0x21;
+	memcpy(&redeemScript[2], pkey1_bin, len);
+	redeemScript[len + 2] = 0x21;
+	memcpy(&redeemScript[len + 3], pkey2_bin, len);
+	redeemScript[len * 2 + 3] = 0x21;
+	memcpy(&redeemScript[len * 2 + 4], pkey3_bin, len);
+	redeemScript[len * 3 + 4] = OP_3;
+	redeemScript[len * 3 + 5] = OP_CHECKMULTISIG;
+
+	char* raw_script = malloc(len * 3 + 6);
+	utils_bin_to_hex(redeemScript, len * 3 + 6, raw_script);
+	
+	uint160 hash160;
+	uint256 hashout;
+	btc_hash_sngl_sha256(raw_script, strlen(raw_script), hashout);
+	ripemd160(hashout, sizeof(hashout), hash160);
+
+	char b58[sizeof(hash160)];
+	btc_base58_encode_check(hash160, sizeof(hash160), b58, sizeof(b58));
+
+	printf("Base 58 encode : %s\n", b58);
+
+	free(redeemScript);
+	free(raw_script);
+	fflush(stdout);
+}
+
+void get_pubkey_hex_from_wif_priv(const char* priv_key, char* out) {
+	const btc_chainparams* chain = &btc_chainparams_test;
+	uint8_t* privkey_data = malloc(strlen(priv_key));
+
+	size_t outlen = 0;
+	outlen = btc_base58_decode_check(priv_key, privkey_data, sizeof(privkey_data));
+
+	btc_key key;
+	btc_privkey_init(&key);
+	memcpy(key.privkey, privkey_data + 1, 32);
+
+	btc_pubkey pubkey;
+	btc_pubkey_init(&pubkey);
+	btc_pubkey_from_key(&key, &pubkey);
+
+	utils_bin_to_hex(pubkey.pubkey, BTC_ECKEY_COMPRESSED_LENGTH, out);
+
+	free(privkey_data);
+	fflush(stdout);
+}
+
 void hd_wallet(){
     btc_hdnode node;
     char master_public[112], master_private[112], address[112];
@@ -138,6 +213,7 @@ int main(int argc, char** argv) {
 	btc_ecc_start();
 
 	hd_wallet();
+	create_multisig_script();
 
 	btc_ecc_stop();
 };
