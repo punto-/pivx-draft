@@ -26,6 +26,7 @@ typedef SSIZE_T ssize_t;
 //Mandar bitcoin a direccion de testnet desde un faucet
 
 void get_pubkey_hex_from_wif_priv(const char* priv_key, char* out);
+void ripemd160(const uint8_t* msg, uint32_t msg_len, uint8_t* hash);
 
 extern void btc_ecc_start();
 extern void btc_ecc_stop();
@@ -151,10 +152,13 @@ void create_multisig_script() {
 	btc_hash_sngl_sha256(raw_script, strlen(raw_script), hashout);
 	ripemd160(hashout, sizeof(hashout), hash160);
 
-	char b58[sizeof(hash160)];
-	btc_base58_encode_check(hash160, sizeof(hash160), b58, sizeof(b58));
+	cstring* p2psh = cstr_new_sz(512);
 
-	printf("Base 58 encode : %s\n", b58);
+	btc_script_build_p2sh(p2psh, hash160);
+	//char b58[sizeof(hash160)];
+	//btc_base58_encode_check(hash160, sizeof(hash160), b58, sizeof(b58));
+
+	printf("P2PSH: %s\n", p2psh->str);
 
 	free(redeemScript);
 	free(raw_script);
